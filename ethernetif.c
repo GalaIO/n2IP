@@ -14,9 +14,6 @@
 #include "rtuser.h"
 #include "string.h"
 
-//defien the interface of ethernet.
-Netif_t eth_if;
-char tx_buf[2000];
 
 /*
  *Display the specific Ethernet segment which received.
@@ -157,34 +154,56 @@ err_t ethernetif_init(Netif_t *eth_if){
  *@return err code.
  *
 **/
-err_t ethernetif_initParams(Netif_t *eth_if, char *mac, char *ip, char *gatway, char *mask){
+err_t ethernetif_initParams(Netif_t *eth_if, char *mac, char *ip, char *gatway, char *mask, err_t (*low_output)(U8_t *,U32_t )){
 	
+	//初始化 网络接口类型
 	eth_if->If = IFTYPE_ETHERNET;
+	//网络接口  硬件地址长度
 	eth_if->haLen = 6;
+	//网络接口 协议地址长度
 	eth_if->paLen = 4;
-	eth_if->obSize = 0;
+	//协议地址的 类型
 	eth_if->paType = PROTYPE_IP;
+	//当前处理的协议栈 位置，即当前协议名称
 	eth_if->pType = PROTYPE_UNKNOWN;
-	
+	//复制传入硬件地址
 	memcpy(eth_if->hAddr, mac, eth_if->haLen);
+	//复制传入协议地址
 	n2IP_IPv4Cast(eth_if->pAddr, ip);
+	//复制网关的协议地址
 	n2IP_IPv4Cast(eth_if->pgAddr, gatway);
+	//复制网关协议地址
 	n2IP_IPv4Cast(eth_if->pmAddr, mask);
 	
-	eth_if->low_output = NULL;
-	
+	//赋值 底层输出函数， 一般连接网卡驱动层
+	eth_if->low_output = low_output;
+	//底层输入函数， 连接网卡驱动层
 	eth_if->low_input = ethernet_poll;
+	//从网络接入层提交到TCP/IP协议栈中，即n2IP内核中
 	eth_if->poll = n2IP_poll;
+	//从TCP/IP协议栈 输出数据到网络接口层
 	eth_if->drag = ethernetif_drag;
 	
+/*以下元素  是kernel能完整传递不同 层数据同时保证层间松耦合性的关键，
+ *由netif只传递数据的指针，而不是发生上下文的拷贝；如果需要回溯数据内容，
+ *直接由额外的指针索引。
+**/
+	//输入数据 句柄
 	eth_if->inBuf = NULL;
+	//输入数据 大小
 	eth_if->ibSize = 0;
+	//输出数据 大小
 	eth_if->obSize = 0;
-	
+	//输出数据 句柄
 	eth_if->outBuf = NULL;
 	
 	//show the log info of the if.
 	ethernetif_show(eth_if);
+	
+	//进行必要的初始化步骤
+	//初始化netif的arp表项
+	eth_if->arp_size = ARP_CACHE_MAX_ENTRY;
+	arp_init(eth_if->arp_table, eth_if->arp_size);
 	
 	return ERR_NONE;
 	

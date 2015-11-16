@@ -55,7 +55,7 @@ typedef U8_t						err_t;
 #define n2IP_err(logger,format,...)					if(logger) n2IP_printf("[n2IP]["#logger"][Error][%s:%4d]: "format"\r\n", __FILE__, __LINE__, ##__VA_ARGS__)
 #define n2IP_waring(logger,format,...)			if(logger) n2IP_printf("[n2IP]["#logger"][Waring]: "format"\r\n", ##__VA_ARGS__)
 
-/*-----------------------------------------------------net interface-------------------------------------------------------------*/
+/*-----------------------------------------------------a net interface and ti's content-------------------------------------------------------------*/
 #define PROTYPE_UNKNOWN		0x0000
 
 //Pro type defination.
@@ -86,10 +86,27 @@ typedef U8_t						err_t;
 #define IFTYPE_FDDI				0x0012	//光纤通信
 #define IFTYPE_SLIP				0x0014	//串行线路
 
-
 #define PRO_LEN_MAX	16
 #define HARDWARE_LEN_MAX	6
 
+
+//ARP 缓存表项~ 一个网络接口必须的
+typedef struct Arp_entry{
+	//协议地址
+	U8_t	pAddr[PRO_LEN_MAX];
+	//硬件地址
+	U8_t	hAddr[HARDWARE_LEN_MAX];
+	//ARP表项状态
+	U8_t	enState;
+	//ARP表项时延
+	U16_t	tOut;
+	//ARP请求次数
+	U8_t	enRetry;
+	//ARP请求查询次数，用于ARP表项删除策略
+	U16_t	enQuery;
+}ARP_entry_t;
+
+//the net interface
 typedef struct Netif{
 	//if's meida.
 	U16_t	If;
@@ -140,6 +157,11 @@ typedef struct Netif{
 	//if's extra options.
 	U16_t	ifOp;
 	
+	//ARP 表项缓存单元
+	//the necessary data related by Netif.
+	ARP_entry_t arp_table[ARP_CACHE_MAX_ENTRY];
+	U16_t	arp_size;
+	
 }Netif_t;
 
 /*----------------------------------------------------ethernetif.c------------------------------------------------------------*/
@@ -188,7 +210,7 @@ typedef struct Ethernet{
 
 err_t ethernetif_init(Netif_t *eth_if);
 
-err_t ethernetif_initParams(Netif_t *eth_if, char *mac, char *ip, char *gatway, char *mask);
+err_t ethernetif_initParams(Netif_t *eth_if, char *mac, char *ip, char *gatway, char *mask, err_t (*low_output)(U8_t *,U32_t ));
 
 /*-----------------------------------------------------misc.c-------------------------------------------------------------*/
 //byte order convertion.
@@ -285,25 +307,9 @@ typedef struct Arp{
 	
 }ARP_t;
 
-//ARP 缓存表项~
-typedef struct Arp_entry{
-	//协议地址
-	U8_t	pAddr[PRO_LEN_MAX];
-	//硬件地址
-	U8_t	hAddr[HARDWARE_LEN_MAX];
-	//ARP表项状态
-	U8_t	enState;
-	//ARP表项时延
-	U16_t	tOut;
-	//ARP请求次数
-	U8_t	enRetry;
-	//ARP请求查询次数，用于ARP表项删除策略
-	U16_t	enQuery;
-}ARP_entry_t;
-
 err_t arp_poll(Netif_t *netif);
 
-err_t arp_init(void);
+err_t arp_init(ARP_entry_t *arp_cache, U32_t size);
 
 err_t arp_drag(Netif_t *netif, U16_t opCode, void *data);
 
@@ -444,6 +450,10 @@ typedef struct TCP{
 }TCP_t;
 
 err_t tcp_poll(Netif_t *netif);
+
+
+/*-----------------------------------------------------net interface-------------------------------------------------------------*/
+
 
 
 #endif

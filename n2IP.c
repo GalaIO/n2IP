@@ -1,10 +1,9 @@
 
 #include "n2IP.h"
-
+//init the n2IP kernel.
 err_t n2IP_init(void){
 	
-	//init arp table.
-	return arp_init();
+	return ERR_NONE;
 	
 }
 

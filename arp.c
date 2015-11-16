@@ -2,9 +2,6 @@
 #include "n2IP.h"
 #include "string.h"
 
-//ARP 表项缓存单元
-static ARP_entry_t arp_cache[ARP_CACHE_MAX_ENTRY];
-
 #define ARP_ENTRY_TIME_OUT		0
 
 /*
@@ -13,15 +10,15 @@ static ARP_entry_t arp_cache[ARP_CACHE_MAX_ENTRY];
  *@return the table index.
  *
 **/
-U32_t arp_alloc(void){
+U32_t arp_alloc(ARP_entry_t *arp_cache, U32_t size){
 	
 	U32_t i,j,k=0xFFFFFFFF;
-	for(i=0; i<ARP_CACHE_MAX_ENTRY; i++){
+	for(i=0; i<size; i++){
 		if(arp_cache[i].enState == ARP_STATE_FREE){
 			return i;
 		}	
 	}
-	for(i=0; i<ARP_CACHE_MAX_ENTRY; i++){
+	for(i=0; i<size; i++){
 		if(arp_cache[i].enQuery < k){
 			j = i;
 			k = arp_cache[i].enQuery;
@@ -74,8 +71,9 @@ void arp_showlog(ARP_t *arp){
 err_t arp_poll(Netif_t *netif){
 	
 	int i;
-	ARP_t *arp = (ARP_t *)netif->inBuf;
+	ARP_t *arp = (ARP_t *)(netif->inBuf);
 	ARP_entry_t *entry = NULL;
+	ARP_entry_t *arp_cache = netif->arp_table;
 	
 	//show arp info.
 	arp_showlog(arp);
@@ -86,7 +84,7 @@ err_t arp_poll(Netif_t *netif){
 	if(!(differ_subnet(ARP_T_SPA(arp), netif->pAddr, netif->pmAddr, netif->paLen))){
 		//update the arp entry cache.
 		//first check, if it already exits in cache.
-		for(i=0; i<ARP_CACHE_MAX_ENTRY; i++){
+		for(i=0; i<netif->arp_size; i++){
 			if(arp_cache[i].enState == ARP_STATE_FREE){
 				continue;
 			}
@@ -100,8 +98,8 @@ err_t arp_poll(Netif_t *netif){
 			}
 		}
 		//second, if it's a new ARP entry, then alloc a entry.
-		if(i >= ARP_CACHE_MAX_ENTRY && entry == NULL){
-			i = arp_alloc();
+		if(i >= netif->arp_size && entry == NULL){
+			i = arp_alloc(netif->arp_table, netif->arp_size);
 			entry = arp_cache+i;
 			memcpy(entry->pAddr, ARP_T_SPA(arp), netif->paLen);
 			memcpy(entry->hAddr, ARP_T_SHA(arp), netif->haLen);
@@ -151,11 +149,11 @@ err_t arp_poll(Netif_t *netif){
  *@return error code.
  *
 **/
-err_t arp_init(void){
+err_t arp_init(ARP_entry_t *arp_cache, U32_t size){
 	
 	int i;
 	//依次更新表项
-	for(i=0; i<ARP_CACHE_MAX_ENTRY; i++){
+	for(i=0; i<size; i++){
 		
 		arp_cache[i].enState = ARP_STATE_FREE;
 		
@@ -234,9 +232,10 @@ err_t arp_drag(Netif_t *netif, U16_t opCode, void *data){
 err_t arp_query(Netif_t *netif, U8_t *ipdest, U8_t *hwdest){
 	
 	int i;
+	ARP_entry_t *arp_cache = netif->arp_table;
 	//there is not in the same subnet.
 	if(differ_subnet(ipdest, netif->pAddr, netif->pmAddr, netif->paLen)){
-		for(i=0; i<ARP_CACHE_MAX_ENTRY; i++){
+		for(i=0; i<netif->arp_size; i++){
 			if(arp_cache[i].enState == ARP_STATE_FREE){
 				continue;
 			}
@@ -249,7 +248,7 @@ err_t arp_query(Netif_t *netif, U8_t *ipdest, U8_t *hwdest){
 		//request for gateway addr.
 		arp_drag(netif, ARP_OPCODE_ARP_REQUEST, netif->pgAddr);
 	}else{
-		for(i=0; i<ARP_CACHE_MAX_ENTRY; i++){
+		for(i=0; i<netif->arp_size; i++){
 			if(arp_cache[i].enState == ARP_STATE_FREE){
 				continue;
 			}
@@ -278,8 +277,9 @@ err_t arp_query(Netif_t *netif, U8_t *ipdest, U8_t *hwdest){
 err_t arp_timeOut(Netif_t *netif){
 	
 	int i;
+	ARP_entry_t *arp_cache = netif->arp_table;
 	
-	for(i=0; i<ARP_CACHE_MAX_ENTRY; i++){
+	for(i=0; i<netif->arp_size; i++){
 		//if state is free, there is nothing to handle.
 		if(arp_cache[i].enState == ARP_STATE_FREE){
 			continue;

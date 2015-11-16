@@ -8,14 +8,17 @@
 #ifndef _N2IP_CONFIG_H_
 #define _N2IP_CONFIG_H_
 
-#include "stdlib.h"
+#include "rtthread.h"
 
 //n2IP's format output.
-#define n2IP_printf		printf
+//extern void rt_kprintf(const char *fmt, ...);
+#define n2IP_printf		rt_kprintf
 
 //n2IP's alloc free interface.
-//#define n2IP_alloc		malloc
-//#define n2IP_free			free
+////extern void *rt_malloc(unsigned int size);
+//#define n2IP_alloc		rt_malloc
+////extern void rt_free(void *rmem);
+//#define n2IP_free		rt_free
 extern char tx_buf[2000];
 #define n2IP_alloc(tmp)		(void *)(tx_buf)
 #define n2IP_free(tmp)					
@@ -39,7 +42,7 @@ extern char tx_buf[2000];
 //ARP »º´æµÄARP±íÏî
 #define ARP_CACHE_MAX_ENTRY		10
 #define ARP_ENTRY_TIME_LIFE		100
-#define ARP_ENTRY_REQ_TRY		10
+#define ARP_ENTRY_REQ_TRY			10
 
 //IP's options.
 #define IP_PACK_TTL		128
