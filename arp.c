@@ -144,16 +144,16 @@ err_t arp_poll(Netif_t *netif){
 /*
  *Init the arp entry.
  *
- *@param void.
+ *@param netif, the handle of netif
  *
  *@return error code.
  *
 **/
-err_t arp_init(ARP_entry_t *arp_cache, U32_t size){
-	
+err_t arp_init(Netif_t *netif){
+	ARP_entry_t *arp_cache = netif->arp_table;
 	int i;
 	//依次更新表项
-	for(i=0; i<size; i++){
+	for(i=0; i<netif->arp_size; i++){
 		
 		arp_cache[i].enState = ARP_STATE_FREE;
 		

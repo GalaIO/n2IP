@@ -13,8 +13,6 @@
 #include "n2IP.h"
 #include "string.h"
 
-static U16_t IP_id = 0;
-
 /*
  *
  *Show IP Packet Header.
@@ -68,7 +66,7 @@ err_t ip_drag(Netif_t *netif){
 	ip->DiffServ = 0x00;
 	ip_len = netif->obSize+ip_head_len;
 	ip->TotalLen = htons(ip_len);
-	ip->IdentifyCount = htons(IP_id++);
+	ip->IdentifyCount = htons(netif->ip_id++);
 	ip->Flag_FragOffset = 0x0000;
 	ip->TTL = IP_PACK_TTL;
 	ip->ProtoclType = netif->pType;

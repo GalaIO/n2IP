@@ -200,10 +200,18 @@ err_t ethernetif_initParams(Netif_t *eth_if, char *mac, char *ip, char *gatway, 
 	//show the log info of the if.
 	ethernetif_show(eth_if);
 	
+	//init ids.
+	eth_if->ip_id = 0x01;
+	eth_if->icmp_id = 0x01;
+	
 	//进行必要的初始化步骤
 	//初始化netif的arp表项
 	eth_if->arp_size = ARP_CACHE_MAX_ENTRY;
-	arp_init(eth_if->arp_table, eth_if->arp_size);
+	arp_init(eth_if);
+	
+	//初始化netif的udp表项
+	eth_if->ucb_size = UDP_SOCKET_MAX_SIZE;
+	udp_init(eth_if);
 	
 	return ERR_NONE;
 	

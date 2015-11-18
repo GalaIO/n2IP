@@ -43,7 +43,6 @@ void icmp_showInfo(ICMP_t *icmp){
 err_t icmp_drag(Netif_t *netif, U8_t type, U8_t code, void *data){
 	
 	ICMP_t *icmp;
-	static U8_t idd;
 	switch(type){
 		//ping request
 		case ICMP_TYPE_REQUESTREPLY:
@@ -59,7 +58,7 @@ err_t icmp_drag(Netif_t *netif, U8_t type, U8_t code, void *data){
 				icmp->code = 0x00;
 				(*(icmp->pData+4)) = ICMP_PING_IDETIFY;
 				(*(icmp->pData+5)) = 0x00;
-				(*(icmp->pData+6)) = ++idd;
+				(*(icmp->pData+6)) = netif->icmp_id;
 				(*(icmp->pData+7)) = 0x00;
 				//set the procotol type for lower level.
 				netif->pType = IP_PRO_ICMP;

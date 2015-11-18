@@ -47,6 +47,8 @@ typedef U8_t						err_t;
 #define ERR_UNKNOWN			0x02
 #define ERR_NOMAC				0x03
 #define ERR_ECHKSUM			0x04
+#define ERR_NOSOCKET		0x08
+#define ERR_NOMEM				0x10
 
 /*----------------------------------------------------Debugger------------------------------------------------------------*/
 #define n2IP_print(logger,format,...)				if(logger) n2IP_printf(format, ##__VA_ARGS__)
@@ -106,6 +108,22 @@ typedef struct Arp_entry{
 	U16_t	enQuery;
 }ARP_entry_t;
 
+//udp的套接字 结构
+#define UDP_SOCKET_FREE		0x00
+#define UDP_SOCKET_USED		0x01
+
+#define UDP_SOCKET_SERVER	0x01
+#define UDP_SOCKET_CLIENT	0x02
+typedef struct ucb{
+	U8_t	state;
+	U16_t	local_port;
+	U8_t	options;
+	U8_t	remote_ip[PRO_LEN_MAX];
+	U8_t	pLen;
+	U16_t	remote_port;
+	void  (*event_handler)(struct ucb *socket, U8_t *inBuf, U32_t tLen);
+}UCB_t;
+
 //the net interface
 typedef struct Netif{
 	//if's meida.
@@ -137,12 +155,17 @@ typedef struct Netif{
 	//destination port
 	U16_t dPort;
 	
-//	//if's input buf.
+	//if's input buf.
 	U8_t	*inBuf;
 	U32_t ibSize;
 	//if's output buf.
 	U8_t	*outBuf;
 	U32_t	obSize;
+	
+	//ip id sequence.
+	U16_t ip_id;
+	//icmp id sequence.
+	U8_t  icmp_id;
 	
 	//interface input;
 	err_t (*low_input)(struct Netif *eth_if, U8_t *eth_buf, U32_t size);
@@ -161,6 +184,10 @@ typedef struct Netif{
 	//the necessary data related by Netif.
 	ARP_entry_t arp_table[ARP_CACHE_MAX_ENTRY];
 	U16_t	arp_size;
+	
+	//udp socket单元
+	UCB_t	ucb_table[UDP_SOCKET_MAX_SIZE];
+	U16_t	ucb_size;
 	
 }Netif_t;
 
@@ -309,7 +336,7 @@ typedef struct Arp{
 
 err_t arp_poll(Netif_t *netif);
 
-err_t arp_init(ARP_entry_t *arp_cache, U32_t size);
+err_t arp_init(Netif_t *netif);
 
 err_t arp_drag(Netif_t *netif, U16_t opCode, void *data);
 
@@ -417,8 +444,21 @@ typedef struct PSEUDO_IPV4_HDR{
 	U16_t	tLen;
 }PSEUDO_IPV4_HDR_t;
 
+void udp_init(Netif_t *netif);
+
 err_t udp_poll(Netif_t *netif);
 
+err_t udp_drag(Netif_t *netif, UCB_t *udp_socket, U8_t *data, U32_t len);
+
+UCB_t *udp_socket_connect(Netif_t *netif, char *strip, U8_t pLen, U16_t destPort, 
+			void  (*event_handler)(struct ucb *socket, U8_t *inBuf, U32_t tLen));
+
+UCB_t *udp_socket_listen(Netif_t *netif, U16_t localPort, 
+			void  (*event_handler)(struct ucb *socket, U8_t *inBuf, U32_t tLen));
+			
+err_t udp_socket_close(UCB_t *ucb);
+			
+err_t udp_socket_write(Netif_t *netif, UCB_t *udp_socket, U8_t *data, U32_t len);
 /*------------------------------------------------------tcp.c-------------------------------------------------------------*/
 #define TCP_FLAG_FIN	0x01
 #define TCP_FLAG_SYN	0x02
@@ -450,10 +490,6 @@ typedef struct TCP{
 }TCP_t;
 
 err_t tcp_poll(Netif_t *netif);
-
-
-/*-----------------------------------------------------net interface-------------------------------------------------------------*/
-
 
 
 #endif
